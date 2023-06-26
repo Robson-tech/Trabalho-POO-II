@@ -3,18 +3,20 @@ from pessoa import Usuario
 from jogos import Jogos
 from dica import Dica
 
-conexao = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="1234",
-    database="cadastro"
-)
-cursor = conexao.cursor()
-
 
 class Metodos:
     def __init__(self) -> None:
-        cursor.execute("""
+        self.conexao = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="1234",
+            # database="cadastro",
+            auth_plugin='mysql_native_password'
+        )
+        self.cursor = self.conexao.cursor()
+        self.cursor.execute("CREATE DATABASE IF NOT EXISTS cadastro")
+        self.cursor.execute("USE cadastro")
+        self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS Usuarios (
         idUsuarios INT AUTO_INCREMENT PRIMARY KEY,
         nome VARCHAR(45) NOT NULL,
@@ -24,8 +26,7 @@ class Metodos:
         senha VARCHAR(45) NOT NULL
     )   ENGINE=InnoDB
         """)
-
-        cursor.execute(""" CREATE TABLE IF NOT EXISTS Jogos (
+        self.cursor.execute(""" CREATE TABLE IF NOT EXISTS Jogos (
         idJogos INT NOT NULL AUTO_INCREMENT,
         nome VARCHAR(45) NOT NULL,
         ano_lancamento DATE NOT NULL,
@@ -36,36 +37,38 @@ class Metodos:
         """)
 
     def verifica_cadastro(self, user, email):
-        cursor.execute(
+        self.cursor.execute(
             'SELECT * FROM Usuarios WHERE user = %s OR email = %s', (user, email))
-        resultado = cursor.fetchall()
+        resultado = self.cursor.fetchall()
         if len(resultado) == 0:
             return False
         else:
             return True
 
     def cadastrar(self, p):
-        cursor.execute("INSERT INTO Usuarios (nome, email, endereco, user, senha) VALUES (%s, %s, %s, %s, %s)",
+        self.cursor.execute("INSERT INTO Usuarios (nome, email, endereco, user, senha) VALUES (%s, %s, %s, %s, %s)",
                            (p._nome, p._email, p._endereco, p._user, p._senha))
+        self.conexao.commit()
         return True
 
     def logar(self, email, senha):
-        cursor.execute(
+        self.cursor.execute(
             'SELECT * FROM Usuarios WHERE email = %s AND senha = %s', (email, senha))
-        resultado = cursor.fetchone()
+        resultado = self.cursor.fetchone()
         if resultado == None:
             return False
         else:
             return True
 
     def cad_jogos(self, j):
-        cursor.execute("""INSERT INTO Jogos (nome, ano_lancamento, descri) VALUES (%s, %s, %s)""",
+        self.cursor.execute("""INSERT INTO Jogos (nome, ano_lancamento, descri) VALUES (%s, %s, %s)""",
                        (j._nome, j._ano_lancamento, j._desc,))
-        conexao.commit()
+        self.conexao.commit()
         return True
 
     def cadDica(self, d):
-        cursor.execute(""" INSERT INTO dicas VALUES (%s)""", d.dicas)
+        self.cursor.execute(""" INSERT INTO dicas VALUES (%s)""", d.dicas)
+        self.conexao.commit()
         return True
 
 
@@ -88,7 +91,7 @@ if __name__ == '__main__':
                 email = mensagemStr[1]
                 senha = mensagemStr[2]
                 print('connectado1')
-                if not metodos.logar(email, senha):
+                if metodos.logar(email, senha):
                     enviar = '1'
                 else:
                     enviar = '0'
